@@ -29,10 +29,13 @@ def regions():
 @app.route('/regions/<region>/cities', methods=['GET'])
 def cities(region):
     query = f"""
-        SELECT ?city 
+        SELECT DISTINCT ?city 
         WHERE {{
-            ?city dbo:subdivision dbr:{region} .
+            {{ ?city dbo:subdivision dbr:{region} . }}
+            UNION
+            {{ dbr:{region} dbp:seat ?city . }}
         }}
+        ORDER BY ASC(?city)
     """
 
     sparql.setQuery(query)
@@ -48,14 +51,16 @@ def cities(region):
 def regionAttractions(region):
     args = request.args
 
-    # categories_filter_query = f"""FILTER(?attraction_subject IN ({createAttractionSubjectsList(subjectSet)}))""" if args.get('category') else ""
+    categories_filter_query = f"""FILTER(?attraction_subject = {args.get('category')} || ?attraction_type = {args.get('category')})""" if args.get('category') else f"""FILTER(?attraction_subject IN ({createAttractionSubjectsList(subjectSet)}) || ?attraction_type IN ({createAttractionSubjectsList(typeSet)}))"""
 
     city_filter_query = f"""FILTER (?attraction_location IN (dbr:{args.get('city')}))""" if args.get('city') else f"""FILTER (?attraction_location IN (?city, dbr:{region}))"""
 
     query = f"""
         SELECT DISTINCT ?attraction ?attraction_thumbnail ?attraction_label ?attraction_description GROUP_CONCAT(DISTINCT ?attraction_more_details; separator=",") as ?attraction_more_details_grouped
         WHERE {{
-            ?city dbo:subdivision dbr:{region} .
+            {{ ?city dbo:subdivision dbr:{region} . }}
+            UNION
+            {{ dbr:{region} dbp:seat ?city . }}
         
             ?attraction dct:subject ?attraction_subject ;
                         rdf:type ?attraction_type ;
@@ -66,7 +71,7 @@ def regionAttractions(region):
                         dbo:wikiPageExternalLink ?attraction_more_details .
                     
             {city_filter_query}
-            FILTER(?attraction_subject IN ({createAttractionSubjectsList(subjectSet)}) || ?attraction_type IN ({createAttractionSubjectsList(typeSet)}))
+            {categories_filter_query}
             FILTER (LANGMATCHES(LANG(?attraction_label), "uk"))
             FILTER (LANGMATCHES(LANG(?attraction_description), "uk"))
         }}
@@ -85,7 +90,7 @@ def regionAttractions(region):
 
 @app.route('/categories', methods=['GET'])
 def categories():
-    return list(subjectSet)
+    return list(subjectSet) + list(typeSet)
 
 if __name__ == '__main__':
     app.run(debug=True)
