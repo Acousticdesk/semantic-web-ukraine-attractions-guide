@@ -1,7 +1,7 @@
 from flask import Flask, request
 from SPARQLWrapper import SPARQLWrapper, JSON
 from flask_cors import CORS
-from common import categoriesSet, fetchResponseFromSPARQLWrapper
+from common import subjectSet, typeSet, fetchResponseFromSPARQLWrapper
 from helpers import createAttractionSubjectsList
 
 app = Flask(__name__)
@@ -48,7 +48,7 @@ def cities(region):
 def regionAttractions(region):
     args = request.args
 
-    # categories_filter_query = f"""FILTER(?attraction_subject IN ({createAttractionSubjectsList(categoriesSet)}))""" if args.get('category') else ""
+    # categories_filter_query = f"""FILTER(?attraction_subject IN ({createAttractionSubjectsList(subjectSet)}))""" if args.get('category') else ""
 
     city_filter_query = f"""FILTER (?attraction_location IN (dbr:{args.get('city')}))""" if args.get('city') else f"""FILTER (?attraction_location IN (?city, dbr:{region}))"""
 
@@ -58,13 +58,15 @@ def regionAttractions(region):
             ?city dbo:subdivision dbr:{region} .
         
             ?attraction dct:subject ?attraction_subject ;
+                        rdf:type ?attraction_type ;
                         dbo:location ?attraction_location ;
                         dbo:thumbnail ?attraction_thumbnail ;
                         rdfs:label ?attraction_label ;
                         dbo:abstract ?attraction_description ;
                         dbo:wikiPageExternalLink ?attraction_more_details .
                     
-            {city_filter_query}    
+            {city_filter_query}
+            FILTER(?attraction_subject IN ({createAttractionSubjectsList(subjectSet)}) || ?attraction_type IN ({createAttractionSubjectsList(typeSet)}))
             FILTER (LANGMATCHES(LANG(?attraction_label), "uk"))
             FILTER (LANGMATCHES(LANG(?attraction_description), "uk"))
         }}
@@ -83,7 +85,7 @@ def regionAttractions(region):
 
 @app.route('/categories', methods=['GET'])
 def categories():
-    return list(categoriesSet)
+    return list(subjectSet)
 
 if __name__ == '__main__':
     app.run(debug=True)
