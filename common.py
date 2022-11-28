@@ -11,3 +11,6 @@ categoriesSet = {
  "dbc:Rebuilt_buildings_and_structures_in_Ukraine",
  "dbc:20th-century_Roman_Catholic_church_buildings_in_Ukraine"
 }
+
+def fetchResponseFromSPARQLWrapper(res):
+ return res['results']['bindings']

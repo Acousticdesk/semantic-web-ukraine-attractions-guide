@@ -1,9 +1,11 @@
 from flask import Flask
 from SPARQLWrapper import SPARQLWrapper, JSON
-from common import categoriesSet
+from flask_cors import CORS
+from common import categoriesSet, fetchResponseFromSPARQLWrapper
 from helpers import createAttractionSubjectsList
 
 app = Flask(__name__)
+CORS(app)
 
 sparql = SPARQLWrapper('https://dbpedia.org/sparql')
 
@@ -20,8 +22,9 @@ def regions():
     sparql.setReturnFormat(JSON)
 
     result = sparql.query().convert()
+    response = fetchResponseFromSPARQLWrapper(result)
 
-    return result
+    return list(map(lambda r: r['region']['value'], response))
 
 @app.route('/regions/<region>/cities', methods=['GET'])
 def cities(region):
@@ -36,8 +39,9 @@ def cities(region):
     sparql.setReturnFormat(JSON)
 
     result = sparql.query().convert()
+    response = fetchResponseFromSPARQLWrapper(result)
 
-    return result
+    return list(map(lambda r: r['city']['value'], response))
 
 @app.route('/cities/<city>/attractions', methods=['GET'])
 def cityAttractions(city):
@@ -55,8 +59,9 @@ def cityAttractions(city):
     sparql.setReturnFormat(JSON)
 
     result = sparql.query().convert()
+    response = fetchResponseFromSPARQLWrapper(result)
 
-    return result
+    return response
 
 if __name__ == '__main__':
     app.run(debug=True)
