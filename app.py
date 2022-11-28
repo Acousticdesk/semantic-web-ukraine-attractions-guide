@@ -65,6 +65,30 @@ def cityAttractions(city):
 
     return response
 
+
+@app.route('/regions/<region>/attractions', methods=['GET'])
+def regionAttractions(region):
+    args = request.args
+    filter_query = f"""FILTER(?attraction_subject IN ({createAttractionSubjectsList(categoriesSet)}))""" if args.get(
+        'category') else ""
+    query = f"""
+        SELECT DISTINCT ?attraction 
+        WHERE {{
+            ?attraction dct:subject ?attraction_subject ;
+                        dbo:location dbr:{region} .            
+
+            {filter_query}
+        }}
+    """
+
+    sparql.setQuery(query)
+    sparql.setReturnFormat(JSON)
+
+    result = sparql.query().convert()
+    response = fetchResponseFromSPARQLWrapper(result)
+
+    return list(map(lambda r: r['attraction']['value'], response))
+
 @app.route('/categories', methods=['GET'])
 def categories():
     return list(categoriesSet)
