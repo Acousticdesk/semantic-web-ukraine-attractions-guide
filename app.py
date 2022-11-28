@@ -72,13 +72,21 @@ def regionAttractions(region):
     filter_query = f"""FILTER(?attraction_subject IN ({createAttractionSubjectsList(categoriesSet)}))""" if args.get(
         'category') else ""
     query = f"""
-        SELECT DISTINCT ?attraction 
+        SELECT DISTINCT ?attraction ?attraction_thumbnail ?attraction_label ?attraction_description GROUP_CONCAT(DISTINCT ?attraction_more_details; separator=",") as ?attraction_more_details_grouped
         WHERE {{
             ?attraction dct:subject ?attraction_subject ;
-                        dbo:location dbr:{region} .            
+                        dbo:location dbr:{region} ;
+                        dbo:thumbnail ?attraction_thumbnail ;
+                        rdfs:label ?attraction_label ;
+                        dbo:abstract ?attraction_description ;
+                        dbo:wikiPageExternalLink ?attraction_more_details .
+                        
+            FILTER (LANGMATCHES(LANG(?attraction_label), "uk"))
+            FILTER (LANGMATCHES(LANG(?attraction_description), "uk"))   
 
             {filter_query}
         }}
+        GROUP BY ?attraction ?attraction_description ?attraction_label ?attraction_thumbnail
     """
 
     sparql.setQuery(query)
@@ -87,7 +95,9 @@ def regionAttractions(region):
     result = sparql.query().convert()
     response = fetchResponseFromSPARQLWrapper(result)
 
-    return list(map(lambda r: r['attraction']['value'], response))
+    print(response)
+
+    return list(map(lambda r: { 'details': r['attraction_more_details_grouped']['value'].split(','), 'attraction': r['attraction']['value'], 'description': r['attraction_description']['value'], 'label': r['attraction_label']['value'], 'thumbnail': r['attraction_thumbnail']['value'] }, response))
 
 @app.route('/categories', methods=['GET'])
 def categories():
