@@ -43,30 +43,12 @@ def cities(region):
 
     return list(map(lambda r: r['city']['value'], response))
 
-@app.route('/debug', methods=['GET'])
-def debugEndpoint():
-    query = f"""
-        SELECT DISTINCT ?city
-        WHERE {{
-            ?city dbo:subdivision dbr:Kyiv_Oblast .
-        }}
-    """
-
-    sparql.setQuery(query)
-    sparql.setReturnFormat(JSON)
-
-    result = sparql.query().convert()
-    response = fetchResponseFromSPARQLWrapper(result)
-
-    return response
-
 
 @app.route('/regions/<region>/attractions', methods=['GET'])
 def regionAttractions(region):
     args = request.args
 
-    categories_filter_query = f"""FILTER(?attraction_subject IN ({createAttractionSubjectsList(categoriesSet)}))""" if args.get(
-        'category') else ""
+    # categories_filter_query = f"""FILTER(?attraction_subject IN ({createAttractionSubjectsList(categoriesSet)}))""" if args.get('category') else ""
 
     city_filter_query = f"""FILTER (?attraction_location IN (dbr:{args.get('city')}))""" if args.get('city') else f"""FILTER (?attraction_location IN (?city, dbr:{region}))"""
 
@@ -84,9 +66,7 @@ def regionAttractions(region):
                     
             {city_filter_query}    
             FILTER (LANGMATCHES(LANG(?attraction_label), "uk"))
-            FILTER (LANGMATCHES(LANG(?attraction_description), "uk"))   
-
-            {categories_filter_query}
+            FILTER (LANGMATCHES(LANG(?attraction_description), "uk"))
         }}
         GROUP BY ?attraction ?attraction_description ?attraction_label ?attraction_thumbnail
     """

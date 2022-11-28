@@ -12,5 +12,21 @@ categoriesSet = {
  "dbc:20th-century_Roman_Catholic_church_buildings_in_Ukraine"
 }
 
+# dct:subject
+# dbc:National_parks_of_Ukraine
+# dbc:Banks_of_Ukraine
+# dbc:Ukrainian_restaurants
+# dbc:Ukrainian_brands
+
+# rdf:type
+# dbo:ArchitecturalStructure
+# dbo:Reservoir
+# dbo:ProtectedArea
+# dbo:Museum
+# dbo:Airport
+# dbo:Legislature
+# dbo:HistoricBuilding
+# dbo:Stadium
+
 def fetchResponseFromSPARQLWrapper(res):
  return res['results']['bindings']
