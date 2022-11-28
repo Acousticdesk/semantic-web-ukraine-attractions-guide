@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request
 from SPARQLWrapper import SPARQLWrapper, JSON
 from flask_cors import CORS
 from common import categoriesSet, fetchResponseFromSPARQLWrapper
@@ -45,13 +45,15 @@ def cities(region):
 
 @app.route('/cities/<city>/attractions', methods=['GET'])
 def cityAttractions(city):
+    args = request.args
+    filter_query = f"""FILTER(?attraction_subject IN ({createAttractionSubjectsList(categoriesSet)}))""" if args.get('category') else ""
     query = f"""
         SELECT DISTINCT ?attraction 
         WHERE {{
             ?attraction dct:subject ?attraction_subject ;
                         dbo:location dbr:{city} .            
             
-            FILTER(?attraction_subject IN ({createAttractionSubjectsList(categoriesSet)}))
+            {filter_query}
         }}
     """
 
@@ -62,6 +64,10 @@ def cityAttractions(city):
     response = fetchResponseFromSPARQLWrapper(result)
 
     return response
+
+@app.route('/categories', methods=['GET'])
+def categories():
+    return list(categoriesSet)
 
 if __name__ == '__main__':
     app.run(debug=True)
