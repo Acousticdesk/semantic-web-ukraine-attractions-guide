@@ -43,17 +43,12 @@ def cities(region):
 
     return list(map(lambda r: r['city']['value'], response))
 
-@app.route('/cities/<city>/attractions', methods=['GET'])
-def cityAttractions(city):
-    args = request.args
-    filter_query = f"""FILTER(?attraction_subject IN ({createAttractionSubjectsList(categoriesSet)}))""" if args.get('category') else ""
+@app.route('/debug', methods=['GET'])
+def debugEndpoint():
     query = f"""
-        SELECT DISTINCT ?attraction 
+        SELECT DISTINCT ?city
         WHERE {{
-            ?attraction dct:subject ?attraction_subject ;
-                        dbo:location dbr:{city} .            
-            
-            {filter_query}
+            ?city dbo:subdivision dbr:Kyiv_Oblast .
         }}
     """
 
@@ -69,22 +64,29 @@ def cityAttractions(city):
 @app.route('/regions/<region>/attractions', methods=['GET'])
 def regionAttractions(region):
     args = request.args
-    filter_query = f"""FILTER(?attraction_subject IN ({createAttractionSubjectsList(categoriesSet)}))""" if args.get(
+
+    categories_filter_query = f"""FILTER(?attraction_subject IN ({createAttractionSubjectsList(categoriesSet)}))""" if args.get(
         'category') else ""
+
+    city_filter_query = f"""FILTER (?attraction_location IN (dbr:{args.get('city')}))""" if args.get('city') else f"""FILTER (?attraction_location IN (?city, dbr:{region}))"""
+
     query = f"""
         SELECT DISTINCT ?attraction ?attraction_thumbnail ?attraction_label ?attraction_description GROUP_CONCAT(DISTINCT ?attraction_more_details; separator=",") as ?attraction_more_details_grouped
         WHERE {{
+            ?city dbo:subdivision dbr:{region} .
+        
             ?attraction dct:subject ?attraction_subject ;
-                        dbo:location dbr:{region} ;
+                        dbo:location ?attraction_location ;
                         dbo:thumbnail ?attraction_thumbnail ;
                         rdfs:label ?attraction_label ;
                         dbo:abstract ?attraction_description ;
                         dbo:wikiPageExternalLink ?attraction_more_details .
-                        
+                    
+            {city_filter_query}    
             FILTER (LANGMATCHES(LANG(?attraction_label), "uk"))
             FILTER (LANGMATCHES(LANG(?attraction_description), "uk"))   
 
-            {filter_query}
+            {categories_filter_query}
         }}
         GROUP BY ?attraction ?attraction_description ?attraction_label ?attraction_thumbnail
     """
