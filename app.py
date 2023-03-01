@@ -37,7 +37,7 @@ def regions():
 @app.route('/regions/<region>/cities', methods=['GET'])
 def cities(region):
     query = f"""
-        SELECT DISTINCT ?city ?city_label
+        SELECT DISTINCT ?city SAMPLE(?city_label) as ?city_label_sample
         WHERE {{
             {{ ?city dbo:subdivision dbr:{region} . }}
             UNION
@@ -46,6 +46,7 @@ def cities(region):
             ?city rdfs:label ?city_label .
             FILTER (LANGMATCHES(LANG(?city_label), "uk"))
         }}
+        GROUP BY ?city
         ORDER BY ASC(?city)
     """
 
@@ -55,11 +56,9 @@ def cities(region):
     result = sparql.query().convert()
     response = fetchResponseFromSPARQLWrapper(result)
 
-    print(response)
-
     return {
         'values': list(map(lambda r: r['city']['value'], response)),
-        'labels': list(map(lambda r: r['city_label']['value'], response))
+        'labels': list(map(lambda r: r['city_label_sample']['value'], response))
     }
 
 
@@ -72,7 +71,7 @@ def regionAttractions(region):
     city_filter_query = f"""FILTER (?attraction_location IN (dbr:{args.get('city')}))""" if args.get('city') else f"""FILTER (?attraction_location IN (?city, dbr:{region}))"""
 
     query = f"""
-        SELECT DISTINCT ?attraction ?attraction_thumbnail ?attraction_label ?attraction_description GROUP_CONCAT(DISTINCT ?attraction_more_details; separator=",") as ?attraction_more_details_grouped
+        SELECT DISTINCT ?attraction ?attraction_thumbnail ?attraction_label ?attraction_description ?attraction_longtitude ?attraction_latitude GROUP_CONCAT(DISTINCT ?attraction_more_details; separator=",") as ?attraction_more_details_grouped
         WHERE {{
             {{ ?city dbo:subdivision dbr:{region} . }}
             UNION
@@ -84,14 +83,16 @@ def regionAttractions(region):
                         dbo:thumbnail ?attraction_thumbnail ;
                         rdfs:label ?attraction_label ;
                         dbo:abstract ?attraction_description ;
-                        dbo:wikiPageExternalLink ?attraction_more_details .
+                        dbo:wikiPageExternalLink ?attraction_more_details ;
+                        geo:long ?attraction_longtitude ;
+                        geo:lat ?attraction_latitude .
                     
             {city_filter_query}
             {categories_filter_query}
             FILTER (LANGMATCHES(LANG(?attraction_label), "uk"))
             FILTER (LANGMATCHES(LANG(?attraction_description), "uk"))
         }}
-        GROUP BY ?attraction ?attraction_description ?attraction_label ?attraction_thumbnail
+        GROUP BY ?attraction ?attraction_description ?attraction_label ?attraction_thumbnail ?attraction_longtitude ?attraction_latitude
     """
 
     sparql.setQuery(query)
@@ -100,14 +101,14 @@ def regionAttractions(region):
     result = sparql.query().convert()
     response = fetchResponseFromSPARQLWrapper(result)
 
-    print(response)
-
     return list(map(lambda r: {
         'details': r['attraction_more_details_grouped']['value'].split(','),
         'attraction': r['attraction']['value'],
         'description': r['attraction_description']['value'],
         'label': r['attraction_label']['value'],
-        'thumbnail': r['attraction_thumbnail']['value']
+        'thumbnail': r['attraction_thumbnail']['value'],
+        'longtitude': r['attraction_longtitude']['value'],
+        'latitude': r['attraction_latitude']['value']
     }, response))
 
 @app.route('/categories', methods=['GET'])
