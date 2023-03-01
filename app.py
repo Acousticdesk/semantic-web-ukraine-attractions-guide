@@ -12,9 +12,13 @@ sparql = SPARQLWrapper('https://dbpedia.org/sparql')
 @app.route('/regions', methods=['GET'])
 def regions():
     query = """
-        SELECT ?region 
+        SELECT ?region ?region_label 
         WHERE {
             ?region dct:subject dbc:Oblasts_of_Ukraine .
+            
+            ?region rdfs:label ?region_label .
+            
+            FILTER(LANGMATCHES(LANG(?region_label), 'uk'))
         }
     """
 
@@ -24,16 +28,22 @@ def regions():
     result = sparql.query().convert()
     response = fetchResponseFromSPARQLWrapper(result)
 
-    return list(map(lambda r: r['region']['value'], response))
+    return {
+        'values': list(map(lambda r: r['region']['value'], response)),
+        'labels': list(map(lambda r: r['region_label']['value'], response))
+    }
 
 @app.route('/regions/<region>/cities', methods=['GET'])
 def cities(region):
     query = f"""
-        SELECT DISTINCT ?city 
+        SELECT DISTINCT ?city ?city_label
         WHERE {{
             {{ ?city dbo:subdivision dbr:{region} . }}
             UNION
             {{ dbr:{region} dbp:seat ?city . }}
+            
+            ?city rdfs:label ?city_label .
+            FILTER (LANGMATCHES(LANG(?city_label), "uk"))
         }}
         ORDER BY ASC(?city)
     """
@@ -44,7 +54,12 @@ def cities(region):
     result = sparql.query().convert()
     response = fetchResponseFromSPARQLWrapper(result)
 
-    return list(map(lambda r: r['city']['value'], response))
+    print(response)
+
+    return {
+        'values': list(map(lambda r: r['city']['value'], response)),
+        'labels': list(map(lambda r: r['city_label']['value'], response))
+    }
 
 
 @app.route('/regions/<region>/attractions', methods=['GET'])
@@ -86,7 +101,13 @@ def regionAttractions(region):
 
     print(response)
 
-    return list(map(lambda r: { 'details': r['attraction_more_details_grouped']['value'].split(','), 'attraction': r['attraction']['value'], 'description': r['attraction_description']['value'], 'label': r['attraction_label']['value'], 'thumbnail': r['attraction_thumbnail']['value'] }, response))
+    return list(map(lambda r: {
+        'details': r['attraction_more_details_grouped']['value'].split(','),
+        'attraction': r['attraction']['value'],
+        'description': r['attraction_description']['value'],
+        'label': r['attraction_label']['value'],
+        'thumbnail': r['attraction_thumbnail']['value']
+    }, response))
 
 @app.route('/categories', methods=['GET'])
 def categories():
