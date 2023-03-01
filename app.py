@@ -12,7 +12,7 @@ sparql = SPARQLWrapper('https://dbpedia.org/sparql')
 @app.route('/regions', methods=['GET'])
 def regions():
     query = """
-        SELECT ?region ?region_label 
+        SELECT ?region SAMPLE(?region_label) as ?region_label_sample 
         WHERE {
             ?region dct:subject dbc:Oblasts_of_Ukraine .
             
@@ -20,6 +20,7 @@ def regions():
             
             FILTER(LANGMATCHES(LANG(?region_label), 'uk'))
         }
+        GROUP BY ?region
     """
 
     sparql.setQuery(query)
@@ -30,7 +31,7 @@ def regions():
 
     return {
         'values': list(map(lambda r: r['region']['value'], response)),
-        'labels': list(map(lambda r: r['region_label']['value'], response))
+        'labels': list(map(lambda r: r['region_label_sample']['value'], response))
     }
 
 @app.route('/regions/<region>/cities', methods=['GET'])
